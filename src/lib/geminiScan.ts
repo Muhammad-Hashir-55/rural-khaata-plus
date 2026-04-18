@@ -15,7 +15,7 @@ type GeminiResponse = {
 
 type GeminiApiPart = { text?: string };
 
-const DEFAULT_MODELS = ["gemini-2.5-flash", "gemini-1.5-flash"] as const;
+const DEFAULT_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"] as const;
 
 const SYSTEM_PROMPT = [
   "You extract ledger entries from shop khata images.",
@@ -122,6 +122,19 @@ function resolveGeminiApiKey() {
   return fromEnv || readGeminiKeyFromBrowser();
 }
 
+function normalizeModelName(model: string) {
+  const value = model.trim().toLowerCase();
+  if (!value) return "";
+
+  // Gemini 1.5 is being phased out in some regions/projects.
+  // If a legacy model is configured, transparently switch to a modern flash model.
+  if (value === "gemini-1.5-flash" || value === "models/gemini-1.5-flash") {
+    return "gemini-2.0-flash";
+  }
+
+  return value.replace(/^models\//, "");
+}
+
 export async function extractLedgerRowsWithGemini(imageBlob: Blob): Promise<{ rows: ParsedScanRow[]; rawText: string }> {
   const apiKey = resolveGeminiApiKey();
   if (!apiKey) {
@@ -134,12 +147,16 @@ export async function extractLedgerRowsWithGemini(imageBlob: Blob): Promise<{ ro
     throw new Error("Gemini key is still a placeholder. Put your real key in .env and restart Vite.");
   }
 
-  const configuredModel = String(import.meta.env.VITE_GEMINI_MODEL || "").trim();
-  const models = [configuredModel, ...DEFAULT_MODELS].filter(Boolean).filter((value, index, arr) => arr.indexOf(value) === index);
+  const configuredModel = normalizeModelName(String(import.meta.env.VITE_GEMINI_MODEL || ""));
+  const models = [configuredModel, ...DEFAULT_MODELS]
+    .map(normalizeModelName)
+    .filter(Boolean)
+    .filter((value, index, arr) => arr.indexOf(value) === index);
   const base64Image = await toBase64(imageBlob);
 
   let parsed: GeminiResponse | null = null;
   let lastReason = "Gemini request failed.";
+  const failedModels: string[] = [];
 
   for (const model of models) {
     const response = await fetch(
@@ -172,12 +189,14 @@ export async function extractLedgerRowsWithGemini(imageBlob: Blob): Promise<{ ro
 
     const payload = await response.json();
     if (!response.ok) {
+      failedModels.push(model);
       lastReason = payload?.error?.message || `Gemini request failed for model ${model}.`;
       continue;
     }
 
     const text = pickFirstText(payload?.candidates?.[0]?.content?.parts);
     if (!text || typeof text !== "string") {
+      failedModels.push(model);
       lastReason = `Gemini returned no text payload for model ${model}.`;
       continue;
     }
@@ -187,7 +206,7 @@ export async function extractLedgerRowsWithGemini(imageBlob: Blob): Promise<{ ro
   }
 
   if (!parsed) {
-    throw new Error(lastReason);
+    throw new Error(`${lastReason} Tried models: ${failedModels.join(", ") || models.join(", ")}.`);
   }
 
   const rows = (parsed.rows ?? [])
