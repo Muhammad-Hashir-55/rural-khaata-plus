@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/auth/AuthProvider";
 
@@ -32,13 +32,25 @@ export const useCustomers = () => {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setCustomers([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("customers")
       .select("*")
       .order("created_at", { ascending: false });
-    setCustomers((data as Customer[]) ?? []);
+
+    if (error || !data) {
+      setCustomers([]);
+      setLoading(false);
+      return;
+    }
+
+    const next = (data as Customer[]) ?? [];
+    setCustomers(next);
     setLoading(false);
   }, [user]);
 
@@ -49,20 +61,39 @@ export const useCustomers = () => {
 
 export const useTransactions = (customerId?: string) => {
   const { user } = useAuth();
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setAllTransactions([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    let q = supabase.from("transactions").select("*").order("transaction_date", { ascending: false }).order("created_at", { ascending: false });
-    if (customerId) q = q.eq("customer_id", customerId);
-    const { data } = await q;
-    setTransactions(((data as any[]) ?? []).map((t) => ({ ...t, amount: Number(t.amount) })) as Transaction[]);
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("*")
+      .order("transaction_date", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (error || !data) {
+      setAllTransactions([]);
+      setLoading(false);
+      return;
+    }
+
+    const next = ((data as any[]) ?? []).map((t) => ({ ...t, amount: Number(t.amount) })) as Transaction[];
+    setAllTransactions(next);
     setLoading(false);
-  }, [user, customerId]);
+  }, [user]);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  const transactions = useMemo(
+    () => (customerId ? allTransactions.filter((tx) => tx.customer_id === customerId) : allTransactions),
+    [allTransactions, customerId],
+  );
 
   return { transactions, loading, refresh };
 };

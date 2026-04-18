@@ -51,7 +51,7 @@ const Auth = () => {
           toast.error(parsed.error.issues[0].message);
           return;
         }
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email: parsed.data.email,
           password: parsed.data.password,
           options: {
@@ -67,6 +67,13 @@ const Auth = () => {
           toast.error(error.message);
           return;
         }
+
+        if (!data.session) {
+          toast.success("Account created. Check your email to confirm your account before signing in.");
+          setMode("signin");
+          return;
+        }
+
         toast.success(t("signup_success"));
         navigate("/app", { replace: true });
       } else {
@@ -80,7 +87,7 @@ const Auth = () => {
           password: parsed.data.password,
         });
         if (error) {
-          toast.error(t("invalid_credentials"));
+          toast.error(error.message || t("invalid_credentials"));
           return;
         }
         navigate("/app", { replace: true });

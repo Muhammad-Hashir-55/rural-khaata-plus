@@ -9,7 +9,6 @@ type Props = {
   className?: string;
 };
 
-// Web Speech API wrapper. Uses current i18n speech code.
 const VoiceButton = ({ onResult, className }: Props) => {
   const { t, speechCode } = useI18n();
   const [listening, setListening] = useState(false);
@@ -58,25 +57,45 @@ const VoiceButton = ({ onResult, className }: Props) => {
 
   if (!supported) {
     return (
-      <div className={cn("text-sm text-muted-foreground text-center", className)}>{t("voice_unsupported")}</div>
+      <div className={cn("text-sm text-muted-foreground text-center", className)}>
+        {t("voice_unsupported")}
+      </div>
     );
   }
 
   return (
-    <div className={cn("flex flex-col items-center gap-3", className)}>
-      <Button
-        type="button"
-        size="lg"
-        onClick={toggle}
-        className={cn(
-          "h-24 w-24 rounded-full text-primary-foreground shadow-elevated transition-smooth",
-          listening ? "gradient-debit animate-pulse-mic" : "gradient-primary hover:scale-105"
+    <div className={cn("flex flex-col items-center gap-4", className)}>
+      <div className="relative">
+        <Button
+          type="button"
+          size="lg"
+          onClick={toggle}
+          className={cn(
+            "h-28 w-28 rounded-full text-primary-foreground shadow-lg transition-smooth group",
+            listening
+              ? "gradient-success animate-pulse-mic"
+              : "gradient-primary hover:shadow-xl hover:scale-110 active:scale-95"
+          )}
+          aria-label={t("tap_to_speak")}
+        >
+          {listening ? (
+            <MicOff className="h-12 w-12 animate-bounce-subtle" />
+          ) : (
+            <Mic className="h-12 w-12 group-hover:animate-float" />
+          )}
+        </Button>
+      </div>
+      <div className="text-center space-y-1">
+        <p className={cn(
+          "text-sm font-semibold transition-smooth",
+          listening ? "text-success" : "text-foreground"
+        )}>
+          {listening ? t("listening") : t("tap_to_speak")}
+        </p>
+        {!listening && (
+          <p className="text-xs text-muted-foreground">{t("hold_and_speak")}</p>
         )}
-        aria-label={t("tap_to_speak")}
-      >
-        {listening ? <MicOff className="!h-10 !w-10" /> : <Mic className="!h-10 !w-10" />}
-      </Button>
-      <p className="text-sm font-medium text-foreground">{listening ? t("listening") : t("tap_to_speak")}</p>
+      </div>
     </div>
   );
 };

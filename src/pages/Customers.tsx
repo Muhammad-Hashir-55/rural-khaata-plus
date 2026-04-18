@@ -62,6 +62,7 @@ const Customers = () => {
       return;
     }
     if (!user) return;
+
     setSaving(true);
     const { error } = await supabase.from("customers").insert({
       user_id: user.id,
@@ -89,100 +90,180 @@ const Customers = () => {
 
   return (
     <AppShell>
-      <div className="space-y-5">
+      <div className="space-y-6 pb-8">
+        {/* Header with Add Button */}
         <div className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl font-bold">{t("customers")}</h1>
+          <div>
+            <h1 className="text-4xl font-bold">{t("customers")}</h1>
+            <p className="text-muted-foreground text-sm mt-1">{list.length} {t("customer", { count: list.length })}</p>
+          </div>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button className="gradient-primary text-primary-foreground shadow-soft">
-                <Plus className="h-4 w-4 mr-1" /> {t("add_customer")}
+              <Button className="gradient-primary text-primary-foreground shadow-lg hover:shadow-xl transition-smooth active:scale-95 h-11">
+                <Plus className="h-5 w-5 mr-2" /> {t("add_customer")}
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-card">
-              <DialogHeader><DialogTitle>{t("add_customer")}</DialogTitle></DialogHeader>
-              <div className="space-y-4 py-2">
-                <div>
-                  <Label htmlFor="cn">{t("customer_name")}</Label>
-                  <Input id="cn" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
+            <DialogContent className="bg-card border-border">
+              <DialogHeader>
+                <DialogTitle className="text-2xl">{t("add_customer")}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cn" className="font-semibold">{t("customer_name")}</Label>
+                  <Input
+                    id="cn"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    maxLength={100}
+                    placeholder={t("enter_name")}
+                    className="h-11"
+                  />
                 </div>
-                <div>
-                  <Label htmlFor="cp">{t("phone")}</Label>
-                  <Input id="cp" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={20} />
+                <div className="space-y-2">
+                  <Label htmlFor="cp" className="font-semibold">{t("phone")} ({t("optional")})</Label>
+                  <Input
+                    id="cp"
+                    inputMode="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    maxLength={20}
+                    placeholder="+92 300 1234567"
+                    className="h-11"
+                  />
                 </div>
-                <div>
-                  <Label htmlFor="cnotes">{t("notes")}</Label>
-                  <Textarea id="cnotes" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} />
+                <div className="space-y-2">
+                  <Label htmlFor="cnotes" className="font-semibold">{t("notes")} ({t("optional")})</Label>
+                  <Textarea
+                    id="cnotes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    maxLength={500}
+                    placeholder={t("add_notes")}
+                    className="min-h-24 resize-none"
+                  />
                 </div>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setOpen(false)}>{t("cancel")}</Button>
-                <Button onClick={handleAdd} disabled={saving} className="gradient-primary text-primary-foreground">
-                  {t("save")}
+              <DialogFooter className="gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setOpen(false)}
+                  className="border-border"
+                >
+                  {t("cancel")}
+                </Button>
+                <Button
+                  onClick={handleAdd}
+                  disabled={saving}
+                  className="gradient-primary text-primary-foreground"
+                >
+                  {saving ? "..." : t("save")}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
 
+        {/* Search Input */}
         <div className="relative">
-          <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input
-            placeholder={t("search")}
+            placeholder={t("search_customers")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="ps-9 h-11 bg-card"
+            className="ps-12 h-11 bg-card border-border/50 focus:border-primary"
           />
         </div>
 
+        {/* Empty State */}
         {list.length === 0 ? (
-          <Card className="p-10 text-center border-dashed">
-            <UsersIcon className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-            <p className="font-semibold">{t("no_customers")}</p>
-            <p className="text-sm text-muted-foreground mt-1">{t("no_customers_sub")}</p>
+          <Card className="p-12 text-center border-2 border-dashed">
+            <div className="space-y-3">
+              <div className="flex justify-center">
+                <UsersIcon className="h-12 w-12 text-muted-foreground/50" />
+              </div>
+              <p className="font-semibold text-lg">{t("no_customers")}</p>
+              <p className="text-sm text-muted-foreground">{t("no_customers_sub")}</p>
+            </div>
           </Card>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {list.map((c) => {
+          /* Customers Grid */
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {list.map((c, idx) => {
               const lbl = trustLabel(c.score);
+              const balanceIsPositive = c.balance > 0;
+              const balanceIsNegative = c.balance < 0;
               return (
-                <Card key={c.id} className="p-4 hover:shadow-elevated transition-smooth border-border">
-                  <div className="flex items-start gap-3">
-                    <Link to={`/app/customers/${c.id}`} className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3">
-                        <div className="h-12 w-12 rounded-full gradient-warm flex items-center justify-center text-primary font-bold text-lg shrink-0">
-                          {c.name.charAt(0).toUpperCase()}
+                <Link
+                  key={c.id}
+                  to={`/app/customers/${c.id}`}
+                  className="group"
+                  style={{ animation: `fade-up 0.4s ease-out ${idx * 0.05}s both` }}
+                >
+                  <Card className="p-5 border border-border/50 shadow-md hover:shadow-lg hover:border-primary/50 transition-smooth group-hover:bg-card/80 h-full flex flex-col">
+                    {/* Header with Name and Delete */}
+                    <div className="flex items-start gap-3 mb-4">
+                      <div className="h-14 w-14 rounded-lg gradient-primary flex items-center justify-center text-primary-foreground font-bold text-xl shrink-0 shadow-md group-hover:shadow-lg transition-smooth">
+                        {c.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-foreground truncate group-hover:text-primary transition-smooth">
+                          {c.name}
+                        </p>
+                        {c.phone && (
+                          <p className="text-xs text-muted-foreground truncate">{c.phone}</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleDelete(c.id);
+                        }}
+                        className="p-2 hover:bg-destructive/10 hover:text-destructive rounded-lg transition-smooth"
+                        aria-label={t("delete")}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    {/* Balance and Trust Score */}
+                    <div className="space-y-3 mt-auto pt-4 border-t border-border/50">
+                      <div className="flex items-end justify-between gap-3">
+                        <div>
+                          <p className="text-[11px] uppercase font-bold text-muted-foreground tracking-wide mb-1">
+                            {t("balance")}
+                          </p>
+                          <p
+                            className={cn(
+                              "text-lg font-bold",
+                              balanceIsPositive
+                                ? "text-success"
+                                : balanceIsNegative
+                                  ? "text-destructive"
+                                  : "text-foreground"
+                            )}
+                          >
+                            {balanceIsPositive ? "+" : balanceIsNegative ? "−" : ""}{" "}
+                            {t("rupees")} {formatMoney(Math.abs(c.balance))}
+                          </p>
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-bold truncate">{c.name}</p>
-                          {c.phone && <p className="text-xs text-muted-foreground truncate">{c.phone}</p>}
+                        <div
+                          className={cn(
+                            "flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold",
+                            lbl.color === "success" && "bg-success/15 text-success",
+                            lbl.color === "primary" && "bg-primary/15 text-primary",
+                            lbl.color === "warning" && "bg-warning/15 text-warning",
+                            lbl.color === "destructive" && "bg-destructive/15 text-destructive"
+                          )}
+                        >
+                          ⭐ {c.score}
                         </div>
                       </div>
-                    </Link>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)} aria-label={t("delete")}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between gap-2">
-                    <div>
-                      <p className="text-[10px] uppercase font-semibold text-muted-foreground">{t("balance")}</p>
-                      <p className={cn("font-bold", c.balance > 0 ? "text-success" : c.balance < 0 ? "text-destructive" : "text-foreground")}>
-                        {c.balance >= 0 ? "+" : "−"} {t("rupees")} {formatMoney(c.balance)}
+                      <p className="text-[10px] uppercase font-bold text-muted-foreground">
+                        {t(lbl.key)}
                       </p>
                     </div>
-                    <div className="text-end">
-                      <p className="text-[10px] uppercase font-semibold text-muted-foreground">{t("trust_score")}</p>
-                      <span className={cn(
-                        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold",
-                        lbl.color === "success" && "bg-success/15 text-success",
-                        lbl.color === "primary" && "bg-primary/15 text-primary",
-                        lbl.color === "warning" && "bg-warning/20 text-warning-foreground",
-                        lbl.color === "destructive" && "bg-destructive/15 text-destructive",
-                      )}>
-                        {c.score} · {t(lbl.key)}
-                      </span>
-                    </div>
-                  </div>
-                </Card>
+                  </Card>
+                </Link>
               );
             })}
           </div>

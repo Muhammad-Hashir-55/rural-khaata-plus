@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Mic, ScanLine, Shield, WifiOff, Bell, Languages, BookOpen, ArrowRight, Sparkles } from "lucide-react";
+import { Mic, ScanLine, Shield, Bell, Languages, BookOpen, ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/i18n/I18nProvider";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -21,7 +21,6 @@ const Landing = () => {
     { icon: Mic, k: "voice" },
     { icon: ScanLine, k: "ocr" },
     { icon: Shield, k: "trust" },
-    { icon: WifiOff, k: "offline" },
     { icon: Bell, k: "reminders" },
     { icon: Languages, k: "multi" },
   ];

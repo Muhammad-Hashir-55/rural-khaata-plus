@@ -1,0 +1,23 @@
+{
+  "name": "Rural Khata+",
+  "short_name": "Khata+",
+  "description": "Voice-first multilingual ledger for rural shops.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fff8ed",
+  "theme_color": "#0f766e",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/placeholder.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}

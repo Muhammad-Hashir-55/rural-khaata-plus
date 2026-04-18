@@ -25,27 +25,29 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="sticky top-0 z-30 border-b border-border bg-card/90 backdrop-blur-md">
-        <div className="container flex items-center justify-between gap-3 py-3">
-          <Link to="/app" className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-xl gradient-primary flex items-center justify-center text-primary-foreground shadow-soft">
-              <BookOpen className="h-5 w-5" />
+      {/* Header */}
+      <header className="sticky top-0 z-40 border-b border-border/50 bg-card/80 backdrop-blur-xl shadow-sm">
+        <div className="container flex items-center justify-between gap-3 py-4">
+          {/* Logo & Brand */}
+          <Link
+            to="/app"
+            className="flex items-center gap-3 hover:opacity-80 transition-smooth"
+          >
+            <div className="h-10 w-10 rounded-xl gradient-primary flex items-center justify-center text-primary-foreground shadow-md font-bold text-lg">
+              ₹
             </div>
-            <div className="leading-tight">
-              <p className="font-bold text-sm sm:text-base">{profile?.shop_name || t("app_name")}</p>
-              <p className="text-[11px] text-muted-foreground hidden sm:block">{t("hello")}, {profile?.owner_name}</p>
+            <div className="leading-tight hidden sm:block">
+              <p className="font-bold text-base leading-tight">
+                {profile?.shop_name || t("app_name")}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {profile?.owner_name || t("ledger")}
+              </p>
             </div>
           </Link>
-          <div className="flex items-center gap-2">
-            <LanguageSwitcher />
-            <Button variant="ghost" size="icon" onClick={handleSignOut} aria-label={t("sign_out")}>
-              <LogOut className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-        {/* Desktop nav */}
-        <nav className="hidden md:block border-t border-border bg-card">
-          <div className="container flex gap-1 py-1">
+
+          {/* Desktop Navigation */}
+          <nav className="hidden lg:flex items-center gap-1">
             {navItems.map((item) => (
               <NavLink
                 key={item.to}
@@ -53,26 +55,45 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
                 end={item.end}
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-smooth",
-                    isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted"
+                    "flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-smooth",
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-md"
+                      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                   )
                 }
               >
                 <item.icon className="h-4 w-4" />
-                {item.label}
+                <span className="hidden xl:inline">{item.label}</span>
               </NavLink>
             ))}
+          </nav>
+
+          {/* Right Actions */}
+          <div className="flex items-center gap-2 ml-auto">
+            <LanguageSwitcher />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleSignOut}
+              aria-label={t("sign_out")}
+              className="hover:bg-destructive/10 hover:text-destructive transition-smooth"
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
           </div>
-        </nav>
+        </div>
       </header>
 
-      <main className="flex-1 pb-24 md:pb-8">
-        <div className="container py-4 md:py-8">{children}</div>
+      {/* Main Content */}
+      <main className="flex-1 pb-28 md:pb-8 overflow-x-hidden">
+        <div className="container py-6 md:py-8 animate-fade-up">
+          {children}
+        </div>
       </main>
 
-      {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-card/95 backdrop-blur-md">
-        <div className="grid grid-cols-4">
+      {/* Mobile Bottom Navigation */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border/50 bg-card/95 backdrop-blur-xl shadow-lg">
+        <div className="grid grid-cols-4 gap-1 p-2">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
@@ -80,13 +101,15 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
               end={item.end}
               className={({ isActive }) =>
                 cn(
-                  "flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium transition-smooth",
-                  isActive ? "text-primary" : "text-muted-foreground"
+                  "flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-lg text-[10px] font-semibold transition-smooth",
+                  isActive
+                    ? "bg-primary text-primary-foreground shadow-md"
+                    : "text-muted-foreground hover:bg-muted/60"
                 )
               }
             >
               <item.icon className="h-5 w-5" />
-              {item.label}
+              <span className="leading-tight">{item.label}</span>
             </NavLink>
           ))}
         </div>

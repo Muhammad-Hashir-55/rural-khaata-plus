@@ -9,6 +9,9 @@ import { useTransactions } from "@/hooks/useLedger";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDate, formatMoney, daysBetween } from "@/lib/format";
 import { computeTrustScore, trustLabel } from "@/lib/trustScore";
+import { buildReminderLink } from "@/lib/reminderLinks";
+import { syncCustomerTrustScore } from "@/lib/trustSync";
+import { useAuth } from "@/auth/AuthProvider";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -18,6 +21,7 @@ const CustomerDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { t } = useI18n();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const { transactions, refresh } = useTransactions(id);
@@ -47,11 +51,15 @@ const CustomerDetail = () => {
   }, [transactions, filter]);
 
   const togglePaid = async (txId: string, paid: boolean) => {
+    if (!user) {
+      return;
+    }
     const { error } = await supabase
       .from("transactions")
       .update({ paid: !paid, paid_at: !paid ? new Date().toISOString() : null })
       .eq("id", txId);
     if (error) { toast.error(error.message); return; }
+    if (id) await syncCustomerTrustScore(user.id, id);
     toast.success(t("saved"));
     refresh();
   };
@@ -60,17 +68,23 @@ const CustomerDetail = () => {
     if (!confirm(t("confirm_delete"))) return;
     const { error } = await supabase.from("transactions").delete().eq("id", txId);
     if (error) { toast.error(error.message); return; }
+    if (id && user) await syncCustomerTrustScore(user.id, id);
     toast.success(t("deleted"));
     refresh();
   };
 
-  const sendWhatsApp = (txId: string) => {
+  const sendMessage = async (txId: string, channel: "whatsapp" | "sms") => {
     if (!customer?.phone) { toast.error(t("phone")); return; }
     const tx = transactions.find((t) => t.id === txId);
     if (!tx) return;
     const msg = `${t("hello")} ${customer.name}, ${t("rupees")} ${formatMoney(tx.amount)} ${t("balance")}.${tx.due_date ? ` ${t("due_date")}: ${formatDate(tx.due_date)}` : ""}`;
-    const phone = customer.phone.replace(/[^\d]/g, "");
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
+    const url = buildReminderLink(customer.phone, msg, channel);
+    if (!url) {
+      toast.error("This customer does not have a valid phone number.");
+      return;
+    }
+    window.open(url, "_blank");
+    toast.success(channel === "sms" ? "SMS reminder opened." : "WhatsApp reminder opened.");
   };
 
   if (loading) {
@@ -201,8 +215,13 @@ const CustomerDetail = () => {
                         {tx.paid ? t("mark_unpaid") : t("mark_paid")}
                       </Button>
                       {!tx.paid && customer.phone && (
-                        <Button size="sm" variant="outline" onClick={() => sendWhatsApp(tx.id)} className="gap-1.5">
+                        <Button size="sm" variant="outline" onClick={() => sendMessage(tx.id, "whatsapp")} className="gap-1.5">
                           <Bell className="h-4 w-4" /> {t("remind_whatsapp")}
+                        </Button>
+                      )}
+                      {!tx.paid && customer.phone && (
+                        <Button size="sm" variant="outline" onClick={() => sendMessage(tx.id, "sms")} className="gap-1.5">
+                          SMS
                         </Button>
                       )}
                       <Button size="sm" variant="ghost" onClick={() => deleteTx(tx.id)} className="ms-auto text-destructive hover:text-destructive">

@@ -8,11 +8,15 @@ import { useI18n } from "@/i18n/I18nProvider";
 import { useCustomers, useTransactions } from "@/hooks/useLedger";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDate, formatMoney, daysBetween } from "@/lib/format";
+import { buildReminderLink } from "@/lib/reminderLinks";
+import { syncCustomerTrustScore } from "@/lib/trustSync";
+import { useAuth } from "@/auth/AuthProvider";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 const Reminders = () => {
   const { t } = useI18n();
+  const { user } = useAuth();
   const { customers } = useCustomers();
   const { transactions, refresh } = useTransactions();
 
@@ -27,25 +31,35 @@ const Reminders = () => {
         const days = daysBetween(today, due); // positive = overdue
         return { tx, days };
       })
-      .filter((x) => x.days >= -3) // show due within 3 days or overdue
+      .filter((x) => x.days >= -1) // show one day before, on the day, and overdue
       .sort((a, b) => b.days - a.days);
   }, [transactions]);
 
   const markPaid = async (id: string) => {
+    if (!user) {
+      return;
+    }
     const { error } = await supabase.from("transactions").update({ paid: true, paid_at: new Date().toISOString() }).eq("id", id);
     if (error) { toast.error(error.message); return; }
+    const tx = transactions.find((item) => item.id === id);
+    if (tx) await syncCustomerTrustScore(user.id, tx.customer_id);
     toast.success(t("saved"));
     refresh();
   };
 
-  const sendWhatsApp = (txId: string) => {
+  const sendMessage = async (txId: string, channel: "whatsapp" | "sms") => {
     const tx = transactions.find((t) => t.id === txId);
     if (!tx) return;
     const c = customerById[tx.customer_id];
     if (!c?.phone) { toast.error(t("phone")); return; }
     const msg = `${t("hello")} ${c.name}, ${t("rupees")} ${formatMoney(tx.amount)} ${t("balance")}.${tx.due_date ? ` ${t("due_date")}: ${formatDate(tx.due_date)}` : ""}`;
-    const phone = c.phone.replace(/[^\d]/g, "");
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
+    const url = buildReminderLink(c.phone, msg, channel);
+    if (!url) {
+      toast.error("This customer does not have a valid phone number.");
+      return;
+    }
+    window.open(url, "_blank");
+    toast.success(channel === "sms" ? "SMS reminder opened." : "WhatsApp reminder opened.");
   };
 
   return (
@@ -90,8 +104,11 @@ const Reminders = () => {
                   <div className="flex flex-wrap gap-2 mt-3">
                     {c?.phone && (
                       <>
-                        <Button size="sm" variant="outline" onClick={() => sendWhatsApp(tx.id)} className="gap-1.5">
+                        <Button size="sm" variant="outline" onClick={() => sendMessage(tx.id, "whatsapp")} className="gap-1.5">
                           <MessageCircle className="h-4 w-4" /> {t("remind_whatsapp")}
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => sendMessage(tx.id, "sms")} className="gap-1.5">
+                          SMS
                         </Button>
                         <a href={`tel:${c.phone}`}>
                           <Button size="sm" variant="ghost" className="gap-1.5">
