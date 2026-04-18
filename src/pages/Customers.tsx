@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Search, Users as UsersIcon, Trash2 } from "lucide-react";
+import { Plus, Search, Users as UsersIcon, Trash2, MessageCircle } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -16,11 +16,12 @@ import { formatMoney } from "@/lib/format";
 import { computeTrustScore, trustLabel } from "@/lib/trustScore";
 import { z } from "zod";
 import { toast } from "sonner";
+import { buildReminderLink } from "@/lib/reminderLinks";
 import { cn } from "@/lib/utils";
 
 const customerSchema = z.object({
   name: z.string().trim().min(1).max(100),
-  phone: z.string().trim().max(20).optional().or(z.literal("")),
+  phone: z.string().trim().min(10, "Phone number is required (min 10 digits)").max(20),
   notes: z.string().trim().max(500).optional().or(z.literal("")),
 });
 
@@ -88,6 +89,17 @@ const Customers = () => {
     refresh();
   };
 
+  const sendWhatsAppReminder = (customerName: string, phone: string, balance: number, isPositive: boolean) => {
+    const msg = `${t("hello")} ${customerName}, ${t("rupees")} ${formatMoney(Math.abs(balance))} ${isPositive ? "owed to you" : "you owe"}. Please settle when possible.`;
+    const url = buildReminderLink(phone, msg, "whatsapp");
+    if (!url) {
+      toast.error("Invalid phone number format.");
+      return;
+    }
+    window.open(url, "_blank");
+    toast.success(`WhatsApp reminder sent to ${customerName}`);
+  };
+
   return (
     <AppShell>
       <div className="space-y-4 md:space-y-6 pb-8 px-2 md:px-0">
@@ -120,7 +132,9 @@ const Customers = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="cp" className="text-sm md:text-base font-semibold">{t("phone")} ({t("optional")})</Label>
+                  <Label htmlFor="cp" className="text-sm md:text-base font-semibold">
+                    {t("phone")} <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     id="cp"
                     inputMode="tel"
@@ -128,7 +142,7 @@ const Customers = () => {
                     onChange={(e) => setPhone(e.target.value)}
                     maxLength={20}
                     placeholder="+92 300 1234567"
-                    className="h-11 md:h-12 text-sm md:text-base"
+                    className="h-11 md:h-12 text-sm md:text-base border-2"
                   />
                 </div>
                 <div className="space-y-2">
@@ -216,6 +230,23 @@ const Customers = () => {
                       <button
                         onClick={(e) => {
                           e.preventDefault();
+                          e.stopPropagation();
+                          if (c.phone) {
+                            sendWhatsAppReminder(c.name, c.phone, c.balance, c.balance > 0);
+                          } else {
+                            toast.error("No phone number on file.");
+                          }
+                        }}
+                        className="p-2 hover:bg-primary/10 hover:text-primary rounded-lg transition-smooth"
+                        aria-label="Send WhatsApp reminder"
+                        title="Send WhatsApp reminder"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
                           handleDelete(c.id);
                         }}
                         className="p-2 hover:bg-destructive/10 hover:text-destructive rounded-lg transition-smooth"
@@ -227,6 +258,23 @@ const Customers = () => {
 
                     {/* Balance and Trust Score */}
                     <div className="space-y-3 mt-auto pt-4 border-t border-border/50">
+                      <Button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (c.phone) {
+                            sendWhatsAppReminder(c.name, c.phone, c.balance, c.balance > 0);
+                          } else {
+                            toast.error("No phone number on file.");
+                          }
+                        }}
+                        disabled={!c.phone}
+                        className="w-full h-10 text-sm gradient-primary text-primary-foreground disabled:opacity-60"
+                      >
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        Reminder on WhatsApp
+                      </Button>
                       <div className="flex items-end justify-between gap-3">
                         <div>
                           <p className="text-[11px] uppercase font-bold text-muted-foreground tracking-wide mb-1">
