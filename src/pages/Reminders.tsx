@@ -64,33 +64,33 @@ const Reminders = () => {
 
   return (
     <AppShell>
-      <div className="space-y-5">
+      <div className="space-y-4 md:space-y-5 pb-8 px-2 md:px-0">
         <div className="flex items-center gap-2">
-          <Bell className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">{t("reminders")}</h1>
+          <Bell className="h-5 md:h-6 w-5 md:w-6 text-primary" />
+          <h1 className="text-2xl md:text-4xl font-bold">{t("reminders")}</h1>
         </div>
 
         {items.length === 0 ? (
-          <Card className="p-10 text-center border-dashed">
+          <Card className="p-8 md:p-10 text-center border-dashed">
             <CheckCircle2 className="h-10 w-10 mx-auto text-success mb-2" />
-            <p className="font-semibold">{t("no_reminders")}</p>
+            <p className="font-semibold text-lg">{t("no_reminders")}</p>
           </Card>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2 md:space-y-3">
             {items.map(({ tx, days }) => {
               const c = customerById[tx.customer_id];
               const isOverdue = days > 0;
               return (
-                <Card key={tx.id} className={cn("p-4 border-border", isOverdue && "border-destructive/40")}>
-                  <div className="flex items-start gap-3">
-                    <div className="h-11 w-11 rounded-full gradient-warm flex items-center justify-center text-primary font-bold">
+                <Card key={tx.id} className={cn("p-3 md:p-4 border-border", isOverdue && "border-destructive/40")}>
+                  <div className="flex items-start gap-2 md:gap-3 flex-wrap md:flex-nowrap">
+                    <div className="h-10 md:h-11 w-10 md:w-11 rounded-full gradient-warm flex items-center justify-center text-primary font-bold text-sm md:text-base flex-shrink-0">
                       {c?.name.charAt(0).toUpperCase() ?? "?"}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <Link to={`/app/customers/${tx.customer_id}`} className="font-bold hover:underline truncate block">
+                      <Link to={`/app/customers/${tx.customer_id}`} className="font-bold text-sm md:text-base hover:underline truncate block">
                         {c?.name ?? "—"}
                       </Link>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-xs md:text-sm text-muted-foreground">
                         {t("rupees")} {formatMoney(tx.amount)}{tx.description ? ` · ${tx.description}` : ""}
                       </p>
                       <span className={cn(

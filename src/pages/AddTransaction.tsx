@@ -30,6 +30,17 @@ const txSchema = z.object({
 
 const AddTransaction = () => {
   const { t } = useI18n();
+  const optionalLabel = t("optional") === "optional" ? "Optional" : t("optional");
+  const rupeesSymbol = t("rupees_symbol") === "rupees_symbol" ? "Rs" : t("rupees_symbol");
+  const descriptionPlaceholder =
+    t("description_placeholder") === "description_placeholder"
+      ? "Add a short note (item, reason, etc.)"
+      : t("description_placeholder");
+  const voiceEntryDescription =
+    t("voice_entry_description") === "voice_entry_description"
+      ? "Use voice first, then review or edit below."
+      : t("voice_entry_description");
+  const savingLabel = t("saving") === "saving" ? "Saving..." : t("saving");
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const { user } = useAuth();
@@ -115,7 +126,7 @@ const AddTransaction = () => {
 
   return (
     <AppShell>
-      <div className="space-y-6 max-w-2xl mx-auto pb-8">
+      <div className="space-y-4 md:space-y-6 max-w-2xl mx-auto pb-8 px-2 md:px-0">
         {/* Header */}
         <div className="space-y-2">
           <Button
@@ -127,7 +138,7 @@ const AddTransaction = () => {
             <ArrowLeft className="h-4 w-4 mr-2" /> {t("back")}
           </Button>
           <h1 className="text-4xl font-bold">{t("add_transaction")}</h1>
-          <p className="text-muted-foreground">{t("voice_entry_description")}</p>
+          <p className="text-muted-foreground">{voiceEntryDescription}</p>
         </div>
 
         {/* Voice Recording Section */}
@@ -159,7 +170,7 @@ const AddTransaction = () => {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Customer Selection */}
             <div className="space-y-2">
-              <Label className="text-base font-semibold">{t("customer_name")}</Label>
+              <Label className="text-sm md:text-base font-semibold">{t("customer_name")}</Label>
               {customers.length === 0 ? (
                 <div className="p-4 rounded-lg bg-muted/50 border border-dashed">
                   <p className="text-sm text-muted-foreground">
@@ -174,7 +185,7 @@ const AddTransaction = () => {
                 </div>
               ) : (
                 <Select value={customerId} onValueChange={setCustomerId}>
-                  <SelectTrigger className="h-11 text-base">
+                  <SelectTrigger className="h-13 md:h-12 text-base font-semibold border-2">
                     <SelectValue placeholder={t("customer_name")} />
                   </SelectTrigger>
                   <SelectContent className="bg-popover">
@@ -190,16 +201,16 @@ const AddTransaction = () => {
 
             {/* Type Selection */}
             <div className="space-y-2">
-              <Label className="text-base font-semibold">{t("type")}</Label>
+              <Label className="text-sm md:text-base font-semibold">{t("date")}</Label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setType("credit")}
                   className={cn(
-                    "p-3 rounded-lg border-2 font-semibold text-base transition-smooth active:scale-95",
+                    "p-4 md:p-3 rounded-xl border-2 font-bold text-lg md:text-base transition-smooth active:scale-95",
                     type === "credit"
-                      ? "border-success bg-success/10 text-success shadow-md"
-                      : "border-border bg-card text-muted-foreground hover:border-success/50"
+                      ? "border-success bg-success/15 text-success shadow-md"
+                      : "border-border bg-card text-muted-foreground hover:border-success/50 hover:bg-success/5"
                   )}
                 >
                   ↓ {t("credit")}
@@ -208,10 +219,10 @@ const AddTransaction = () => {
                   type="button"
                   onClick={() => setType("debit")}
                   className={cn(
-                    "p-3 rounded-lg border-2 font-semibold text-base transition-smooth active:scale-95",
+                    "p-4 md:p-3 rounded-xl border-2 font-bold text-lg md:text-base transition-smooth active:scale-95",
                     type === "debit"
-                      ? "border-destructive bg-destructive/10 text-destructive shadow-md"
-                      : "border-border bg-card text-muted-foreground hover:border-destructive/50"
+                      ? "border-destructive bg-destructive/15 text-destructive shadow-md"
+                      : "border-border bg-card text-muted-foreground hover:border-destructive/50 hover:bg-destructive/5"
                   )}
                 >
                   ↑ {t("debit")}
@@ -225,8 +236,8 @@ const AddTransaction = () => {
                 {t("amount")} ({t("rupees")})
               </Label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">
-                  {t("rupees_symbol")} 
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-full flex items-center px-4 text-xl font-bold text-primary">
+                  {rupeesSymbol}
                 </span>
                 <Input
                   id="amt"
@@ -237,7 +248,7 @@ const AddTransaction = () => {
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   required
-                  className="h-11 text-lg font-bold pl-12"
+                  className="h-13 md:h-12 text-xl md:text-lg font-bold pl-14 pr-4"
                   placeholder="0.00"
                 />
               </div>
@@ -246,15 +257,15 @@ const AddTransaction = () => {
             {/* Description */}
             <div className="space-y-2">
               <Label htmlFor="desc" className="text-base font-semibold">
-                {t("description")} ({t("optional")})
+                {t("description")} ({optionalLabel})
               </Label>
               <Textarea
                 id="desc"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 maxLength={300}
-                placeholder={t("description_placeholder")}
-                className="min-h-24 resize-none"
+                placeholder={descriptionPlaceholder}
+                className="min-h-28 md:min-h-24 resize-none text-base p-4 md:p-3 border-2"
               />
               <p className="text-xs text-muted-foreground text-right">
                 {description.length}/300
@@ -273,19 +284,19 @@ const AddTransaction = () => {
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                   required
-                  className="h-11"
+                  className="h-13 md:h-12 text-base font-semibold border-2"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="dd" className="text-base font-semibold">
-                  {t("due_date")} ({t("optional")})
+                  {t("due_date")} ({optionalLabel})
                 </Label>
                 <Input
                   id="dd"
                   type="date"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
-                  className="h-11"
+                  className="h-13 md:h-12 text-base font-semibold border-2"
                 />
               </div>
             </div>
@@ -294,12 +305,12 @@ const AddTransaction = () => {
             <Button
               type="submit"
               disabled={saving || !customerId}
-              className="w-full h-12 text-base font-semibold gradient-primary text-primary-foreground shadow-lg hover:shadow-xl transition-smooth active:scale-95"
+              className="w-full h-14 md:h-13 text-lg md:text-base font-bold gradient-primary text-primary-foreground shadow-lg hover:shadow-xl hover:-translate-y-1 transition-smooth active:scale-95"
             >
               {saving ? (
                 <>
                   <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                  {t("saving")}
+                  {savingLabel}
                 </>
               ) : (
                 <>

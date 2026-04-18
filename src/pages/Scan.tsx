@@ -12,12 +12,13 @@ import { useCustomers } from "@/hooks/useLedger";
 import { supabase } from "@/integrations/supabase/client";
 import { syncCustomerTrustScore } from "@/lib/trustSync";
 import { parseScannedLedger, type ParsedScanRow } from "@/lib/parseScannedLedger";
+import { extractLedgerRowsWithGemini } from "@/lib/geminiScan";
 import { toast } from "sonner";
 
 type OcrOutcome = {
   text: string;
   confidence: number;
-  source: "enhanced" | "original";
+  source: "enhanced" | "original" | "gemini";
 };
 
 type CanvasBundle = {
@@ -163,6 +164,7 @@ const Scan = () => {
   const [importing, setImporting] = useState(false);
   const [ocrConfidence, setOcrConfidence] = useState<number | null>(null);
   const [ocrSource, setOcrSource] = useState<OcrOutcome["source"] | null>(null);
+  const [geminiFallbackReason, setGeminiFallbackReason] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const customerByName = useMemo(
@@ -177,23 +179,55 @@ const Scan = () => {
     setRows([]);
     setOcrConfidence(null);
     setOcrSource(null);
+    setGeminiFallbackReason(null);
 
     try {
       const prepared = await prepareImageForOcr(file);
       setImgUrl(prepared.previewUrl);
+      setProgress(20);
 
-      const best = await recognizeBestOcr(prepared.originalBlob, prepared.enhancedBlob, setProgress);
-      const parsedRows = parseScannedLedger(best.text);
+      let parsedRows: ParsedScanRow[] = [];
+      let selectedText = "";
+      let selectedConfidence: number | null = null;
+      let selectedSource: OcrOutcome["source"] | null = null;
+      let fallbackReason: string | null = null;
 
-      setText(best.text);
+      try {
+        const gemini = await extractLedgerRowsWithGemini(prepared.enhancedBlob);
+        parsedRows = gemini.rows;
+        selectedText = gemini.rawText;
+        selectedSource = "gemini";
+        selectedConfidence = 99;
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : "Gemini extraction failed.";
+        fallbackReason = reason;
+        setGeminiFallbackReason(reason);
+        // Fall back to local OCR when Gemini is unavailable or returns invalid data.
+      }
+
+      setProgress(65);
+
+      if (parsedRows.length === 0) {
+        const best = await recognizeBestOcr(prepared.originalBlob, prepared.enhancedBlob, setProgress);
+        parsedRows = parseScannedLedger(best.text);
+        selectedText = best.text;
+        selectedConfidence = best.confidence;
+        selectedSource = best.source;
+      }
+
+      setText(selectedText);
       setRows(parsedRows);
-      setOcrConfidence(best.confidence);
-      setOcrSource(best.source);
+      setOcrConfidence(selectedConfidence);
+      setOcrSource(selectedSource);
 
-      if (!best.text) {
+      if (!selectedText && parsedRows.length === 0) {
         toast.error(t("no_text_found"));
       } else if (parsedRows.length > 0) {
-        toast.success(`Found ${parsedRows.length} possible ledger row${parsedRows.length === 1 ? "" : "s"}.`);
+        const label = selectedSource === "gemini" ? "Gemini AI" : "OCR";
+        toast.success(`${label} found ${parsedRows.length} possible ledger row${parsedRows.length === 1 ? "" : "s"}.`);
+        if (selectedSource !== "gemini" && fallbackReason) {
+          toast.message(`Gemini fallback to OCR: ${fallbackReason}`);
+        }
       } else {
         toast.message("Text was recognized, but no ledger rows were confidently detected yet.");
       }
@@ -274,14 +308,14 @@ const Scan = () => {
 
   return (
     <AppShell>
-      <div className="space-y-5 max-w-4xl mx-auto">
+      <div className="space-y-4 md:space-y-5 max-w-4xl mx-auto pb-8 px-2 md:px-0">
         <div className="flex items-center gap-2">
-          <ScanLine className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">{t("scan_title")}</h1>
+          <ScanLine className="h-5 md:h-6 w-5 md:w-6 text-primary" />
+          <h1 className="text-2xl md:text-4xl font-bold">{t("scan_title")}</h1>
         </div>
-        <p className="text-muted-foreground">{t("scan_sub")}</p>
+        <p className="text-sm md:text-base text-muted-foreground">{t("scan_sub")}</p>
 
-        <Card className="p-6 border-dashed border-2 border-border bg-card">
+        <Card className="p-4 md:p-6 border-dashed border-2 border-border bg-card">
           <input
             ref={fileRef}
             type="file"
@@ -294,9 +328,9 @@ const Scan = () => {
             type="button"
             onClick={() => fileRef.current?.click()}
             disabled={busy}
-            className="w-full h-16 gradient-primary text-primary-foreground text-base"
+            className="w-full h-13 md:h-14 gradient-primary text-primary-foreground text-sm md:text-base font-bold"
           >
-            {busy ? <Loader2 className="h-5 w-5 animate-spin me-2" /> : <Upload className="h-5 w-5 me-2" />}
+            {busy ? <Loader2 className="h-4 md:h-5 w-4 md:w-5 animate-spin me-2" /> : <Upload className="h-4 md:h-5 w-4 md:w-5 me-2" />}
             {busy ? `Improving image and scanning... ${progress}%` : t("upload_image")}
           </Button>
           <p className="mt-3 text-xs text-muted-foreground">
@@ -305,50 +339,55 @@ const Scan = () => {
         </Card>
 
         {imgUrl && (
-          <Card className="p-4 border-border overflow-hidden">
-            <div className="flex items-center justify-between gap-3 mb-3">
+          <Card className="p-3 md:p-4 border-border overflow-hidden">
+            <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
               <div>
-                <h3 className="font-bold flex items-center gap-2">
+                <h3 className="font-bold text-sm md:text-base flex items-center gap-2">
                   <Eye className="h-4 w-4 text-primary" />
                   OCR-ready preview
                 </h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs md:text-sm text-muted-foreground">
                   The image below is enhanced before recognition to improve contrast and readability.
                 </p>
               </div>
               {ocrConfidence !== null && (
-                <div className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
-                  Confidence {Math.round(ocrConfidence)}% via {ocrSource}
+                <div className="rounded-full bg-muted px-2 md:px-3 py-1 text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                  Confidence {Math.round(ocrConfidence)}% via {ocrSource === "gemini" ? "Gemini AI" : ocrSource}
                 </div>
               )}
             </div>
+            {ocrSource !== "gemini" && geminiFallbackReason && (
+              <p className="text-xs text-warning-foreground bg-warning/10 border border-warning/30 rounded-lg px-3 py-2 mb-3">
+                Gemini unavailable, used OCR fallback: {geminiFallbackReason}
+              </p>
+            )}
             <img src={imgUrl} alt="Scanned" className="w-full max-h-[28rem] object-contain rounded-lg bg-muted/30" />
           </Card>
         )}
 
         {rows.length > 0 ? (
-          <Card className="p-5 border-border">
-            <div className="flex items-center justify-between gap-3 mb-4">
+          <Card className="p-4 md:p-5 border-border">
+            <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
               <div>
-                <h3 className="font-bold flex items-center gap-2">
+                <h3 className="font-bold text-sm md:text-base flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-primary" />
                   Detected ledger rows
                 </h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs md:text-sm text-muted-foreground">
                   Review the structured results and import them directly into your digital khata.
                 </p>
               </div>
-              <Button onClick={handleImport} disabled={importing} className="gradient-primary text-primary-foreground">
+              <Button onClick={handleImport} disabled={importing} className="gradient-primary text-primary-foreground h-11 md:h-10 text-sm md:text-base whitespace-nowrap">
                 {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : `Import ${rows.length}`}
               </Button>
             </div>
 
             <div className="grid gap-3">
               {rows.map((row) => (
-                <div key={row.id} className="rounded-2xl border border-border bg-muted/20 p-4">
+                <div key={row.id} className="rounded-2xl border border-border bg-muted/20 p-3 md:p-4">
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
+                    <div className="space-y-2 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="inline-flex items-center rounded-full bg-card px-3 py-1 text-xs font-semibold text-muted-foreground">
                           {row.type === "credit" ? "Credit" : "Debit"}
                         </span>
@@ -357,47 +396,48 @@ const Scan = () => {
                           Rs {row.amount.toLocaleString()}
                         </span>
                       </div>
-                      <p className="text-lg font-bold">{row.name}</p>
-                      <p className="text-sm text-muted-foreground">{row.description}</p>
+                      <p className="text-base md:text-lg font-bold">{row.name}</p>
+                      <p className="text-xs md:text-sm text-muted-foreground">{row.description}</p>
                     </div>
 
                     <Dialog open={editingId === row.id} onOpenChange={(open) => setEditingId(open ? row.id : null)}>
                       <DialogTrigger asChild>
-                        <Button type="button" variant="outline" className="gap-2">
+                        <Button type="button" variant="outline" className="gap-2 h-11 md:h-10 w-full md:w-auto text-sm md:text-base">
                           <PencilLine className="h-4 w-4" />
                           Edit
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="bg-card">
+                      <DialogContent className="bg-card max-w-md md:max-w-lg">
                         <DialogHeader>
-                          <DialogTitle>Edit detected row</DialogTitle>
+                          <DialogTitle className="text-lg md:text-2xl">Edit detected row</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4 py-2">
                           <div>
-                            <Label>Name</Label>
-                            <Input value={row.name} onChange={(e) => updateRow(row.id, { name: e.target.value })} />
+                            <Label className="text-sm md:text-base">Name</Label>
+                            <Input value={row.name} onChange={(e) => updateRow(row.id, { name: e.target.value })} className="h-11 md:h-12 text-sm md:text-base" />
                           </div>
                           <div>
-                            <Label>Amount</Label>
+                            <Label className="text-sm md:text-base">Amount</Label>
                             <Input
                               type="number"
                               min="0"
                               step="0.01"
                               value={row.amount}
                               onChange={(e) => updateRow(row.id, { amount: Number(e.target.value) })}
+                              className="h-11 md:h-12 text-sm md:text-base"
                             />
                           </div>
                           <div>
-                            <Label>Description</Label>
-                            <Input value={row.description} onChange={(e) => updateRow(row.id, { description: e.target.value })} />
+                            <Label className="text-sm md:text-base">Description</Label>
+                            <Input value={row.description} onChange={(e) => updateRow(row.id, { description: e.target.value })} className="h-11 md:h-12 text-sm md:text-base" />
                           </div>
                           <div>
-                            <Label>Type</Label>
-                            <div className="grid grid-cols-2 gap-2 mt-1">
-                              <Button type="button" variant={row.type === "credit" ? "default" : "outline"} onClick={() => updateRow(row.id, { type: "credit" })}>
+                            <Label className="text-sm md:text-base">Type</Label>
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                              <Button type="button" variant={row.type === "credit" ? "default" : "outline"} onClick={() => updateRow(row.id, { type: "credit" })} className="h-11 md:h-10 text-sm">
                                 Credit
                               </Button>
-                              <Button type="button" variant={row.type === "debit" ? "default" : "outline"} onClick={() => updateRow(row.id, { type: "debit" })}>
+                              <Button type="button" variant={row.type === "debit" ? "default" : "outline"} onClick={() => updateRow(row.id, { type: "debit" })} className="h-11 md:h-10 text-sm">
                                 Debit
                               </Button>
                             </div>

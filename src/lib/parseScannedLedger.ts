@@ -10,11 +10,15 @@ export type ParsedScanRow = {
 const CREDIT_WORDS = ["udhar", "borrowed", "credit", "owe", "owed", "lent", "ادھار", "قرض", "उधार", "ਕਰਜ਼", "ਉਧਾਰ"];
 const DEBIT_WORDS = ["paid", "returned", "debit", "settled", "gave", "ادا", "واپس", "भुगतान", "वापस", "ਵਾਪਸ", "ਅਦਾ"];
 const NOISE_WORDS = /\b(rs|rupees|pkr|amount|amt|balance|total|page|date|ledger|khata|entry|item)\b/gi;
+const NAME_CHARS = /[A-Za-z\u0600-\u06FF\u0900-\u097F\u0A00-\u0A7F]/;
+const AMOUNT_TOKEN_REGEX = /[-+]?\s*\d[\d,]*(?:\.\d+)?/g;
 
-function detectType(line: string): "credit" | "debit" {
+function detectType(line: string, explicitSign?: string): "credit" | "debit" {
   const lower = line.toLowerCase();
   if (DEBIT_WORDS.some((word) => lower.includes(word.toLowerCase()))) return "debit";
   if (CREDIT_WORDS.some((word) => lower.includes(word.toLowerCase()))) return "credit";
+  if (explicitSign?.startsWith("-")) return "debit";
+  if (explicitSign?.startsWith("+")) return "credit";
   return /^-/.test(line.trim()) ? "debit" : "credit";
 }
 
@@ -30,22 +34,42 @@ function cleanName(line: string) {
   return normalizeLine(line)
     .replace(NOISE_WORDS, " ")
     .replace(/[-+]?\d[\d,]*(?:\.\d+)?/g, " ")
-    .replace(/[=:;,.()[\]{}]/g, " ")
+    .replace(/[=:;,.()[\]{}_\\/]/g, " ")
     .replace(/\b(credit|debit|paid|borrowed|returned|udhar|owe|owed)\b/gi, " ")
+    .replace(/^[-_~.\s]+|[-_~.\s]+$/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
 
-function extractAmount(line: string) {
-  const matches = [...line.matchAll(/[-+]?\d[\d,]*(?:\.\d+)?/g)];
-  if (matches.length === 0) return null;
+function extractAmounts(line: string) {
+  return [...line.matchAll(AMOUNT_TOKEN_REGEX)]
+    .map((match) => {
+      const token = match[0].replace(/\s+/g, "");
+      const value = Number(token.replace(/,/g, "").replace(/^\+/, ""));
+      if (!Number.isFinite(value) || value === 0) return null;
+      return {
+        amount: Math.abs(value),
+        sign: token.startsWith("-") ? "-" : token.startsWith("+") ? "+" : "",
+      };
+    })
+    .filter((entry): entry is { amount: number; sign: string } => !!entry);
+}
 
-  const ranked = matches
-    .map((match) => Number(match[0].replace(/,/g, "").replace(/^\+/, "")))
-    .filter((value) => Number.isFinite(value) && value > 0)
-    .sort((a, b) => b - a);
+function isLikelyName(value: string) {
+  if (!value) return false;
+  if (!NAME_CHARS.test(value)) return false;
+  const letters = value.match(/[A-Za-z\u0600-\u06FF\u0900-\u097F\u0A00-\u0A7F]/g)?.length ?? 0;
+  return letters >= 2;
+}
 
-  return ranked[0] ?? null;
+function isStrongInlineNameCandidate(value: string, hasAmount: boolean) {
+  if (!isLikelyName(value)) return false;
+  if (!hasAmount) return true;
+
+  const tokens = value.split(/\s+/).filter(Boolean);
+  const letters = value.match(/[A-Za-z\u0600-\u06FF\u0900-\u097F\u0A00-\u0A7F]/g)?.length ?? 0;
+  if (tokens.length > 4) return false;
+  return letters >= 3;
 }
 
 function splitPotentialRows(text: string) {
@@ -71,21 +95,33 @@ function splitPotentialRows(text: string) {
 export function parseScannedLedger(text: string): ParsedScanRow[] {
   const lines = splitPotentialRows(text);
   const rows: ParsedScanRow[] = [];
+  let currentName: string | null = null;
 
   lines.forEach((line, index) => {
-    const amount = extractAmount(line);
-    if (!amount) return;
+    const normalized = normalizeLine(line);
+    const nameOnLine = cleanName(normalized);
+    const amountEntries = extractAmounts(normalized);
+    const hasAmount = amountEntries.length > 0;
+    const strongNameOnLine = isStrongInlineNameCandidate(nameOnLine, hasAmount);
 
-    const name = cleanName(line);
-    if (!name || name.length < 2) return;
+    if (!hasAmount && strongNameOnLine) {
+      currentName = nameOnLine;
+    }
 
-    rows.push({
-      id: `scan-row-${index}`,
-      raw: line,
-      name,
-      amount,
-      type: detectType(line),
-      description: line,
+    if (!hasAmount) return;
+
+    const effectiveName = strongNameOnLine ? nameOnLine : currentName;
+    if (!effectiveName) return;
+
+    amountEntries.forEach((entry, amountIndex) => {
+      rows.push({
+        id: `scan-row-${index}-${amountIndex}`,
+        raw: normalized,
+        name: effectiveName,
+        amount: entry.amount,
+        type: detectType(normalized, entry.sign),
+        description: normalized,
+      });
     });
   });
 

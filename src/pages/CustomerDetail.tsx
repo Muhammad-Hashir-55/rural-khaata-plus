@@ -88,47 +88,47 @@ const CustomerDetail = () => {
   };
 
   if (loading) {
-    return <AppShell><div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div></AppShell>;
+    return <AppShell><div className="flex justify-center py-20"><Loader2 className="h-7 md:h-8 w-7 md:w-8 animate-spin text-primary" /></div></AppShell>;
   }
 
   if (!customer) {
-    return <AppShell><Card className="p-8 text-center">Not found</Card></AppShell>;
+    return <AppShell><Card className="p-6 md:p-8 text-center">Not found</Card></AppShell>;
   }
 
   return (
     <AppShell>
-      <div className="space-y-5">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="-ms-2">
+      <div className="space-y-4 md:space-y-5 pb-8 px-2 md:px-0">
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="-ms-2 h-9 md:h-10 text-sm md:text-base">
           <ArrowLeft className="h-4 w-4 me-1" /> {t("back")}
         </Button>
 
         {/* Customer header card */}
-        <Card className="p-6 shadow-soft border-border">
-          <div className="flex items-start gap-4">
-            <div className="h-16 w-16 rounded-full gradient-warm flex items-center justify-center text-primary font-bold text-2xl shrink-0">
+        <Card className="p-4 md:p-6 shadow-soft border-border">
+          <div className="flex items-start gap-3 md:gap-4">
+            <div className="h-14 md:h-16 w-14 md:w-16 rounded-full gradient-warm flex items-center justify-center text-primary font-bold text-lg md:text-2xl shrink-0">
               {customer.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl font-extrabold truncate">{customer.name}</h1>
+              <h1 className="text-xl md:text-2xl font-extrabold truncate">{customer.name}</h1>
               {customer.phone && (
-                <a href={`tel:${customer.phone}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary">
+                <a href={`tel:${customer.phone}`} className="inline-flex items-center gap-1 text-xs md:text-sm text-muted-foreground hover:text-primary">
                   <Phone className="h-3.5 w-3.5" /> {customer.phone}
                 </a>
               )}
-              {customer.notes && <p className="text-sm text-muted-foreground mt-1">{customer.notes}</p>}
+              {customer.notes && <p className="text-xs md:text-sm text-muted-foreground mt-1">{customer.notes}</p>}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3 mt-5">
-            <div className="rounded-xl gradient-warm p-4">
-              <p className="text-[11px] uppercase font-semibold text-muted-foreground">{t("balance")}</p>
-              <p className={cn("text-xl font-extrabold mt-1", balance > 0 ? "text-success" : balance < 0 ? "text-destructive" : "")}>
+          <div className="grid grid-cols-2 gap-2 md:gap-3 mt-4 md:mt-5">
+            <div className="rounded-xl gradient-warm p-3 md:p-4">
+              <p className="text-[10px] md:text-[11px] uppercase font-semibold text-muted-foreground">{t("balance")}</p>
+              <p className={cn("text-lg md:text-xl font-extrabold mt-1 md:mt-2", balance > 0 ? "text-success" : balance < 0 ? "text-destructive" : "")}>
                 {balance >= 0 ? "+" : "−"} {t("rupees")} {formatMoney(balance)}
               </p>
             </div>
-            <div className="rounded-xl bg-card border border-border p-4">
-              <p className="text-[11px] uppercase font-semibold text-muted-foreground">{t("trust_score")}</p>
-              <div className="flex items-baseline gap-2 mt-1">
-                <p className="text-xl font-extrabold">{score}</p>
+            <div className="rounded-xl bg-card border border-border p-3 md:p-4">
+              <p className="text-[10px] md:text-[11px] uppercase font-semibold text-muted-foreground">{t("trust_score")}</p>
+              <div className="flex items-baseline gap-2 mt-1 md:mt-2">
+                <p className="text-lg md:text-xl font-extrabold">{score}</p>
                 <span className={cn(
                   "text-xs font-bold rounded-full px-2 py-0.5",
                   lbl.color === "success" && "bg-success/15 text-success",
@@ -139,15 +139,15 @@ const CustomerDetail = () => {
               </div>
             </div>
           </div>
-          <Link to={`/app/transactions/new?customer=${customer.id}`}>
-            <Button className="w-full mt-4 h-12 gradient-primary text-primary-foreground">
-              <Plus className="h-5 w-5 me-1" /> {t("add_transaction")}
+          <Link to={`/app/transactions/new?customer=${customer.id}`} className="block mt-3 md:mt-4">
+            <Button className="w-full h-11 md:h-12 gradient-primary text-primary-foreground text-sm md:text-base">
+              <Plus className="h-4 md:h-5 w-4 md:w-5 me-1" /> {t("add_transaction")}
             </Button>
           </Link>
         </Card>
 
         {/* Filters */}
-        <div className="flex gap-2 overflow-x-auto -mx-1 px-1">
+        <div className="flex gap-2 overflow-x-auto -mx-2 md:-mx-0 px-2 md:px-0 pb-2">
           {([
             ["all", "filter_all"],
             ["credit", "filter_credit"],
@@ -158,7 +158,7 @@ const CustomerDetail = () => {
               key={key}
               onClick={() => setFilter(key)}
               className={cn(
-                "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-smooth",
+                "px-3 md:px-4 py-2 rounded-full text-xs md:text-sm font-medium whitespace-nowrap transition-smooth",
                 filter === key ? "bg-primary text-primary-foreground shadow-soft" : "bg-muted text-muted-foreground hover:bg-accent"
               )}
             >
@@ -169,32 +169,32 @@ const CustomerDetail = () => {
 
         {/* Transactions */}
         <div>
-          <h2 className="text-lg font-bold mb-3">{t("history")}</h2>
+          <h2 className="text-lg md:text-xl font-bold mb-2 md:mb-3">{t("history")}</h2>
           {filtered.length === 0 ? (
-            <Card className="p-8 text-center border-dashed">
-              <p className="text-muted-foreground">{t("no_transactions")}</p>
+            <Card className="p-6 md:p-8 text-center border-dashed">
+              <p className="text-sm md:text-base text-muted-foreground">{t("no_transactions")}</p>
             </Card>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2 md:space-y-2.5">
               {filtered.map((tx) => {
                 const isCredit = tx.type === "credit";
                 const today = new Date(); today.setHours(0,0,0,0);
                 const overdueDays = tx.due_date && !tx.paid ? daysBetween(today, new Date(tx.due_date)) : 0;
                 const isOverdue = overdueDays > 0 && !tx.paid;
                 return (
-                  <Card key={tx.id} className={cn("p-4 border-border transition-smooth", isOverdue && "border-destructive/40")}>
-                    <div className="flex items-start gap-3">
-                      <div className={cn("h-10 w-10 rounded-full flex items-center justify-center shrink-0", isCredit ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive")}>
-                        {isCredit ? <ArrowDownLeft className="h-5 w-5" /> : <ArrowUpRight className="h-5 w-5" />}
+                  <Card key={tx.id} className={cn("p-3 md:p-4 border-border transition-smooth", isOverdue && "border-destructive/40")}>
+                    <div className="flex items-start gap-2 md:gap-3">
+                      <div className={cn("h-9 md:h-10 w-9 md:w-10 rounded-full flex items-center justify-center shrink-0", isCredit ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive")}>
+                        {isCredit ? <ArrowDownLeft className="h-4 md:h-5 w-4 md:w-5" /> : <ArrowUpRight className="h-4 md:h-5 w-4 md:w-5" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-baseline justify-between gap-2">
-                          <p className="font-bold">{isCredit ? t("credit") : t("debit")}</p>
-                          <p className={cn("font-extrabold whitespace-nowrap", isCredit ? "text-success" : "text-destructive")}>
+                          <p className="font-bold text-sm md:text-base">{isCredit ? t("credit") : t("debit")}</p>
+                          <p className={cn("font-extrabold whitespace-nowrap text-sm md:text-base", isCredit ? "text-success" : "text-destructive")}>
                             {isCredit ? "+" : "−"} {t("rupees")} {formatMoney(tx.amount)}
                           </p>
                         </div>
-                        {tx.description && <p className="text-sm text-muted-foreground mt-0.5">{tx.description}</p>}
+                        {tx.description && <p className="text-xs md:text-sm text-muted-foreground mt-0.5">{tx.description}</p>}
                         <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-muted-foreground">
                           <span>{formatDate(tx.transaction_date)}</span>
                           {tx.due_date && (

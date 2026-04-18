@@ -90,37 +90,37 @@ const Customers = () => {
 
   return (
     <AppShell>
-      <div className="space-y-6 pb-8">
+      <div className="space-y-4 md:space-y-6 pb-8 px-2 md:px-0">
         {/* Header with Add Button */}
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-4xl font-bold">{t("customers")}</h1>
-            <p className="text-muted-foreground text-sm mt-1">{list.length} {t("customer", { count: list.length })}</p>
+            <h1 className="text-2xl md:text-4xl font-bold">{t("customers")}</h1>
+            <p className="text-xs md:text-sm text-muted-foreground mt-1">{list.length} {t("customer", { count: list.length })}</p>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button className="gradient-primary text-primary-foreground shadow-lg hover:shadow-xl transition-smooth active:scale-95 h-11">
+              <Button className="gradient-primary text-primary-foreground shadow-lg hover:shadow-xl transition-smooth active:scale-95 h-12 md:h-11 text-sm md:text-base">
                 <Plus className="h-5 w-5 mr-2" /> {t("add_customer")}
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-card border-border">
+            <DialogContent className="bg-card border-border max-w-md md:max-w-lg">
               <DialogHeader>
-                <DialogTitle className="text-2xl">{t("add_customer")}</DialogTitle>
+                <DialogTitle className="text-xl md:text-2xl">{t("add_customer")}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="cn" className="font-semibold">{t("customer_name")}</Label>
+                  <Label htmlFor="cn" className="text-sm md:text-base font-semibold">{t("customer_name")}</Label>
                   <Input
                     id="cn"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     maxLength={100}
                     placeholder={t("enter_name")}
-                    className="h-11"
+                    className="h-11 md:h-12 text-sm md:text-base"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="cp" className="font-semibold">{t("phone")} ({t("optional")})</Label>
+                  <Label htmlFor="cp" className="text-sm md:text-base font-semibold">{t("phone")} ({t("optional")})</Label>
                   <Input
                     id="cp"
                     inputMode="tel"
@@ -128,33 +128,33 @@ const Customers = () => {
                     onChange={(e) => setPhone(e.target.value)}
                     maxLength={20}
                     placeholder="+92 300 1234567"
-                    className="h-11"
+                    className="h-11 md:h-12 text-sm md:text-base"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="cnotes" className="font-semibold">{t("notes")} ({t("optional")})</Label>
+                  <Label htmlFor="cnotes" className="text-sm md:text-base font-semibold">{t("notes")} ({t("optional")})</Label>
                   <Textarea
                     id="cnotes"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     maxLength={500}
                     placeholder={t("add_notes")}
-                    className="min-h-24 resize-none"
+                    className="min-h-24 resize-none text-sm md:text-base"
                   />
                 </div>
               </div>
-              <DialogFooter className="gap-3">
+              <DialogFooter className="gap-2 md:gap-3 flex-col sm:flex-row">
                 <Button
                   variant="outline"
                   onClick={() => setOpen(false)}
-                  className="border-border"
+                  className="border-border h-11 md:h-12 text-sm md:text-base"
                 >
                   {t("cancel")}
                 </Button>
                 <Button
                   onClick={handleAdd}
                   disabled={saving}
-                  className="gradient-primary text-primary-foreground"
+                  className="gradient-primary text-primary-foreground h-11 md:h-12 text-sm md:text-base"
                 >
                   {saving ? "..." : t("save")}
                 </Button>
@@ -165,12 +165,12 @@ const Customers = () => {
 
         {/* Search Input */}
         <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 md:h-5 w-4 md:w-5 text-muted-foreground" />
           <Input
             placeholder={t("search_customers")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="ps-12 h-11 bg-card border-border/50 focus:border-primary"
+            className="ps-12 h-11 md:h-12 text-sm md:text-base bg-card border-border/50 focus:border-primary"
           />
         </div>
 
@@ -187,7 +187,7 @@ const Customers = () => {
           </Card>
         ) : (
           /* Customers Grid */
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 md:gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {list.map((c, idx) => {
               const lbl = trustLabel(c.score);
               const balanceIsPositive = c.balance > 0;
